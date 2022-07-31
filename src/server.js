@@ -47,6 +47,23 @@ const io = SocketIo(server); //socket.io 서버.
 //   });
 // });
 
+function publicRooms() {
+  const sids = io.sockets.adapter.sids; //연결된 모든 소켓의 id값을 받아옴.
+  const rooms = io.sockets.adapter.rooms;
+
+  const publicRooms = [];
+  rooms.forEach((_, key) => {
+    if (sids.get(key) === undefined) {
+      publicRooms.push(key);
+    }
+  });
+
+  return publicRooms;
+}
+
+function countRoom(roomName) {
+  return io.sockets.adapter.rooms.get(roomName)?.size;
+}
 io.on("connection", (socket) => {
   //커넥션이 발생할때.
 
@@ -66,10 +83,13 @@ io.on("connection", (socket) => {
   socket.on("disconnecting", () => {
     //유저가 방에서 나갈때.
     socket.rooms.forEach((room) => {
-      socket.to(room).emit("bye", socket.nickname);
+      socket.to(room).emit("bye", socket.nickname, countRoom(room) - 1);
     });
   });
 
+  socket.on("disconnect", () => {
+    io.sockets.emit("room_change", publicRooms());
+  });
   socket.on("new_message", (msg, room, done) => {
     socket.to(room).emit("new_message", `${socket.nickname} : ${msg}`);
     done();
@@ -77,8 +97,10 @@ io.on("connection", (socket) => {
 
   socket.on("nickname", (nickname, room, done) => {
     socket["nickname"] = nickname;
-    socket.to(room).emit("welcome", socket.nickname);
-    done();
+    socket.to(room).emit("welcome", socket.nickname, countRoom(room));
+
+    io.sockets.emit("room_change", publicRooms());
+    done(countRoom(room));
   });
 });
 

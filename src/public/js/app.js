@@ -32,19 +32,19 @@ const handleMessageSubmit = (e) => {
 const handleNicknameSubmit = (e) => {
   e.preventDefault();
   const input = nicknameDiv.querySelector("#nicknameForm input");
-  socket.emit("nickname", input.value, roomName, () => {
+  socket.emit("nickname", input.value, roomName, (countUser) => {
     alert("닉네임 생성 완료!");
-    showRoom();
+    showRoom(countUser);
   });
 };
 
 //채팅방을 보여준다.
-const showRoom = () => {
+const showRoom = (countUser) => {
   welcome.hidden = true;
   nicknameDiv.hidden = true;
   room.hidden = false;
   const h3 = room.querySelector("h3");
-  h3.innerText = `Room ${roomName}`;
+  h3.innerText = `Room ${roomName} | user : ${countUser}`;
   const msgForm = room.querySelector("#message");
   msgForm.addEventListener("submit", handleMessageSubmit);
 };
@@ -70,14 +70,32 @@ const handleRoomSubmit = (event) => {
 
 welcomeform.addEventListener("submit", handleRoomSubmit);
 
-socket.on("welcome", (user) => {
+socket.on("welcome", (user, newCount) => {
+  const h3 = room.querySelector("h3");
+  h3.innerText = `Room ${roomName} | user : ${newCount}`;
   addMessage(`${user} joined!`);
 });
 
-socket.on("bye", (left) => {
+socket.on("bye", (left, newCount) => {
+  const h3 = room.querySelector("h3");
+  h3.innerText = `Room ${roomName} | user : ${newCount}`;
   addMessage(`${left} left ㅠㅠ`);
 });
 
 socket.on("new_message", (msg) => {
   addMessage(msg);
+});
+
+socket.on("room_change", (rooms) => {
+  const roomList = welcome.querySelector("ul");
+  roomList.innerHTML = "";
+  if (rooms.length === 0) {
+    roomList.innerHTML = "";
+  }
+
+  rooms.forEach((room) => {
+    const li = document.createElement("li");
+    li.innerText = room;
+    roomList.append(li);
+  });
 });
